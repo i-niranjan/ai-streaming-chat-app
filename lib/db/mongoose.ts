@@ -6,24 +6,35 @@ if (!MONGODB_URI) {
   throw new Error("Please define MONGODB_URI");
 }
 
-let cached = (global as any).mongoose;
+type MongooseCache = {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
+};
+
+const globalWithMongoose = global as typeof globalThis & {
+  mongoose?: MongooseCache;
+};
+
+let cached = globalWithMongoose.mongoose;
 
 if (!cached) {
-  cached = (global as any).mongoose = {
+  cached = globalWithMongoose.mongoose = {
     conn: null,
     promise: null,
   };
 }
 
-export async function connectDB() {
-  if (cached.conn) return cached.conn;
+const mongooseCache = cached;
 
-  if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+export async function connectDB() {
+  if (mongooseCache.conn) return mongooseCache.conn;
+
+  if (!mongooseCache.promise) {
+    mongooseCache.promise = mongoose.connect(MONGODB_URI, {
       dbName: "ai_streaming_chat",
     });
   }
-  cached.conn = await cached.promise;
+  mongooseCache.conn = await mongooseCache.promise;
 
-  return cached.conn;
+  return mongooseCache.conn;
 }
